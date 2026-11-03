@@ -26,33 +26,7 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(express.json());
 app.use(express.static(join(__dirname, 'public')));
-// health endpoint
 
-// Application and Database Health Check
-app.get('/health', async (req, res) => {
-  try {
-    await pool.query('SELECT 1');
-
-    res.status(200).json({
-      status: 'UP',
-      application: 'Dream Catcher',
-      database: 'CONNECTED',
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Health check failed:', error.message);
-
-    res.status(503).json({
-      status: 'DOWN',
-      application: 'Dream Catcher',
-      database: 'DISCONNECTED',
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString()
-    });
-  }
-});
 
 
 // API Routes

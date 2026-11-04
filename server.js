@@ -72,11 +72,13 @@ process.on('SIGINT', ()=> {
 })
 
 let server
+let isShuttingDown = false;
+
 // Initialize database then start server
 try {
   await initDatabase();
 
-  app.listen(PORT, () => {
+  server =app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 } catch (error) {
@@ -84,21 +86,41 @@ try {
   process.exit(1);
 }
 
-process.on('SIGTERM', gracefulShutdown);
 
-async function gracefulShutdown() {
- console.log('SIGTERM received, shutting down gracefully');
-  // Close the server first (stop accepting new connections)
- server.close(() => {
-   console.log('HTTP server closed');
- });
-  // Then close database pool
- try {
-   await pool.end();
-   console.log('Database pool closed');
-   process.exit(0)
- } catch (error) {
-   console.error('Error closing database pool:', error);
-   process.exit(1)
- }
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  console.log(`${signal} received, shutting down gracefully`);
+
+  // Stop accepting new HTTP requests
+  if (server) {
+    server.close(async (error) => {
+      if (error) {
+        console.error('Error closing HTTP server:', error);
+        process.exitCode = 1;
+      } else {
+        console.log('HTTP server closed');
+      }
+
+      try {
+        await pool.end();
+        console.log('Database pool closed');
+      } catch (dbError) {
+        console.error('Error closing database pool:', dbError);
+        process.exitCode = 1;
+      }
+    });
+  } else {
+    try {
+      await pool.end();
+      console.log('Database pool closed');
+    } catch (error) {
+      console.error('Error closing database pool:', error);
+      process.exitCode = 1;
+    }
+  }
 }
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

@@ -71,7 +71,7 @@ process.on('SIGINT', ()=> {
   console.log('Starting graceful shutdown')
 })
 
-
+let server
 // Initialize database then start server
 try {
   await initDatabase();
